@@ -1,0 +1,6 @@
+pandas>=2.0
+numpy
+scikit-learn>=1.3
+joblib
+optuna          # optional: without it train_model.py falls back to the notebook's best params
+pyarrow         # optional: without it artifacts are stored as .pkl instead of .parquet
