@@ -1,0 +1,58 @@
+== 1/5 DEV streams (Batch 1, medium difficulty) - used ONLY for tuning
+== 2/5 TEST streams (Batch 2): hard=baseline, then medium/easy, seed 7 and seeds 11-15
+== 3/5 SAME events as the hard baseline, different detectors (blind-spot scenarios)
+== 4/5 tune on DEV streams only (writes correlation_params.json)
+selected (max mean chain-F1 on DEV streams): {"session_src": {"gap": 30.0}, "session_pair": {"gap": 600.0}, "dbscan": {"tau": 30.0, "w": 0.25, "min_samples": 2}}
+== 5/5 evaluate on TEST streams with the frozen parameters
+
+######## HARD: mean +/- SD over 6 independent test streams
+=== MEAN +/- SD over 6 streams: ['baseline', 'h11', 'h12', 'h13', 'h14', 'h15'] ===
+                    compression    chain_recall chain_precision        chain_f1 incident_stage_coverage merged_chain_share    review_share
+method                                                                                                                                    
+none                 1.0 +/-0.0  0.024 +/-0.003      1.0 +/-0.0  0.048 +/-0.005            0.239 +/-0.0         0.0 +/-0.0    0.09 +/-0.01
+attacker       745.833 +/-0.931      1.0 +/-0.0  0.105 +/-0.033  0.175 +/-0.051          0.993 +/-0.017     0.722 +/-0.136   0.962 +/-0.04
+session_src     10.292 +/-0.595  0.485 +/-0.089  0.648 +/-0.123  0.416 +/-0.063          0.423 +/-0.109     0.278 +/-0.136  0.318 +/-0.202
+session_pair      13.128 +/-0.8  0.377 +/-0.087  0.429 +/-0.109  0.233 +/-0.044           0.66 +/-0.105     0.472 +/-0.125  0.533 +/-0.264
+dbscan            10.194 +/-0.6  0.483 +/-0.091  0.653 +/-0.123  0.414 +/-0.063          0.423 +/-0.109     0.278 +/-0.136  0.318 +/-0.202
+all_in_one    2983.333 +/-3.724      1.0 +/-0.0  0.015 +/-0.002   0.03 +/-0.003          0.993 +/-0.017         1.0 +/-0.0      1.0 +/-0.0
+oracle           1.097 +/-0.012      1.0 +/-0.0      1.0 +/-0.0      1.0 +/-0.0          0.993 +/-0.017         0.0 +/-0.0    0.09 +/-0.01
+
+
+######## MEDIUM: mean +/- SD over 6 independent test streams
+=== MEAN +/- SD over 6 streams: ['medium', 'm11', 'm12', 'm13', 'm14', 'm15'] ===
+                  compression    chain_recall chain_precision        chain_f1 incident_stage_coverage merged_chain_share    review_share
+method                                                                                                                                  
+none               1.0 +/-0.0  0.027 +/-0.006      1.0 +/-0.0  0.053 +/-0.011          0.242 +/-0.004         0.0 +/-0.0  0.085 +/-0.016
+attacker       745.0 +/-1.304      1.0 +/-0.0  0.054 +/-0.018  0.101 +/-0.032           0.982 +/-0.02     0.944 +/-0.086  0.544 +/-0.037
+session_src    9.422 +/-1.252  0.536 +/-0.083  0.526 +/-0.163   0.367 +/-0.11          0.462 +/-0.088     0.333 +/-0.211  0.319 +/-0.109
+session_pair  14.715 +/-1.903  0.434 +/-0.086  0.348 +/-0.203  0.205 +/-0.078           0.653 +/-0.09     0.556 +/-0.172    0.415 +/-0.1
+dbscan         9.172 +/-1.225  0.532 +/-0.087  0.526 +/-0.163  0.364 +/-0.107          0.462 +/-0.088     0.333 +/-0.211  0.319 +/-0.109
+all_in_one    2980.0 +/-5.215      1.0 +/-0.0  0.014 +/-0.003  0.028 +/-0.005           0.982 +/-0.02         1.0 +/-0.0      1.0 +/-0.0
+oracle         1.091 +/-0.019      1.0 +/-0.0      1.0 +/-0.0      1.0 +/-0.0           0.982 +/-0.02         0.0 +/-0.0  0.085 +/-0.016
+
+
+######## EASY: mean +/- SD over 6 independent test streams
+=== MEAN +/- SD over 6 streams: ['easy', 'e11', 'e12', 'e13', 'e14', 'e15'] ===
+                   compression    chain_recall chain_precision        chain_f1 incident_stage_coverage merged_chain_share    review_share
+method                                                                                                                                   
+none                1.0 +/-0.0  0.027 +/-0.006      1.0 +/-0.0  0.053 +/-0.011          0.242 +/-0.004         0.0 +/-0.0  0.085 +/-0.016
+attacker      745.583 +/-2.432      1.0 +/-0.0   0.287 +/-0.06   0.418 +/-0.07           0.982 +/-0.02     0.944 +/-0.086   0.09 +/-0.018
+session_src    13.957 +/-3.543  0.492 +/-0.099  0.741 +/-0.144  0.499 +/-0.074          0.409 +/-0.073     0.333 +/-0.211  0.086 +/-0.016
+session_pair   22.208 +/-8.736  0.425 +/-0.097  0.608 +/-0.136   0.36 +/-0.026          0.616 +/-0.103     0.528 +/-0.164  0.087 +/-0.017
+dbscan         13.509 +/-3.216  0.492 +/-0.099  0.741 +/-0.144  0.499 +/-0.074          0.409 +/-0.073     0.333 +/-0.211  0.086 +/-0.016
+all_in_one    2982.333 +/-9.73      1.0 +/-0.0  0.014 +/-0.003  0.028 +/-0.005           0.982 +/-0.02         1.0 +/-0.0      1.0 +/-0.0
+oracle          1.091 +/-0.019      1.0 +/-0.0      1.0 +/-0.0      1.0 +/-0.0           0.982 +/-0.02         0.0 +/-0.0  0.085 +/-0.016
+
+
+######## same events, different detectors (do not average across these)
+=== stream 'baseline': 2,980 alerts {'decoy_attack': 2689, 'chain': 270, 'benign': 21} | chain events alerted 270/307 ===
+session_src         296       10.068         0.489            0.661     0.387       12.0         0.453                    0.453               0.333                 67         0.285
+oracle             2716        1.097         1.000            1.000     1.000        1.0         1.000                    1.000               0.000                  6         0.091
+=== stream 'EV1_mimic_volume_postexploit': 2,931 alerts {'decoy_attack': 2668, 'chain': 242, 'benign': 21} | chain events alerted 242/307 ===
+session_src         283       10.357         0.524            0.678     0.425      8.500         0.492                    0.411               0.333                 49         0.274
+oracle             2695        1.088         1.000            1.000     1.000      1.000         1.000                    0.850               0.000                  6         0.083
+=== stream 'BS2_no_persist_exec_rules': 2,916 alerts {'decoy_attack': 2656, 'chain': 241, 'benign': 19} | chain events alerted 241/307 ===
+session_src         273       10.681         0.483            0.534     0.328      8.500         0.556                    0.494               0.500                 49         0.279
+oracle             2681        1.088         1.000            1.000     1.000      1.000         1.000                    0.858               0.000                  6         0.083
+session_src      10.369 +/-0.307  0.499 +/-0.022  0.624 +/-0.079   0.38 +/-0.049          0.453 +/-0.042     0.389 +/-0.096   0.28 +/-0.006
+oracle            1.091 +/-0.006      1.0 +/-0.0      1.0 +/-0.0      1.0 +/-0.0          0.903 +/-0.084         0.0 +/-0.0  0.085 +/-0.005

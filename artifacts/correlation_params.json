@@ -1,0 +1,13 @@
+{
+  "session_src": {
+    "gap": 30.0
+  },
+  "session_pair": {
+    "gap": 600.0
+  },
+  "dbscan": {
+    "tau": 30.0,
+    "w": 0.25,
+    "min_samples": 2
+  }
+}

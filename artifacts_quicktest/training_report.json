@@ -1,0 +1,32 @@
+{
+  "params": {
+    "n_estimators": 150,
+    "max_depth": 20,
+    "min_samples_split": 20,
+    "min_samples_leaf": 10,
+    "max_features": "log2",
+    "max_samples": 0.8,
+    "bootstrap": true,
+    "class_weight": "balanced_subsample"
+  },
+  "optuna_best_value": null,
+  "objective": "macro",
+  "validation_last20pct_of_batch1": {
+    "macro_f1": 0.5972556227722101,
+    "weighted_f1": 0.8932345519926537,
+    "per_class_recall": {
+      "Analysis": 0.023809523809523808,
+      "Backdoors": 0.11551155115511551,
+      "DoS": 0.8189175518462317,
+      "Exploits": 0.39737147274835716,
+      "Fuzzers": 0.8220443349753694,
+      "Generic": 0.979667405031904,
+      "Normal": 0.9763918252290346,
+      "Reconnaissance": 0.771969696969697,
+      "Shellcode": 0.9923076923076923,
+      "Worms": 0.6666666666666666
+    }
+  },
+  "model_sha256": "4bcb76825bfb6aecc867d903d723f1ab7474019a0341df75a5944dd8a77cea16",
+  "train_seconds": 2
+}

@@ -1,0 +1,68 @@
+{
+  "settings": {
+    "alert_rule": "pattack",
+    "alert_threshold": 0.99,
+    "stage_detected": 0.5,
+    "stage_partial": 0.2,
+    "stage_alerted": 0.5
+  },
+  "batch1": {
+    "n_chains": 100,
+    "n_stages": 394,
+    "mean_strict_coverage": 0.7346666666666666,
+    "mean_weighted_coverage": 0.7959166666666667,
+    "mean_visibility_coverage": 0.998,
+    "mean_detection_gap_pct": 26.533333333333335,
+    "mean_attribution_gap_pct": 26.333333333333336,
+    "fully_detected_chains_pct": 30.0,
+    "stage_status_counts": {
+      "DETECTED": 290,
+      "MISLABELED": 55,
+      "PARTIAL": 49
+    },
+    "breakpoint_histogram": {
+      "Service disruption": 31,
+      "none": 30,
+      "Service discovery": 16,
+      "Backdoor / C2": 12,
+      "Recon scanning": 7,
+      "Exploitation": 4
+    },
+    "visibility_break_histogram": {
+      "none": 100
+    }
+  },
+  "batch2": {
+    "n_chains": 100,
+    "n_stages": 406,
+    "mean_strict_coverage": 0.6421666666666667,
+    "mean_weighted_coverage": 0.7282500000000001,
+    "mean_visibility_coverage": 0.9676666666666667,
+    "mean_detection_gap_pct": 35.78333333333333,
+    "mean_attribution_gap_pct": 32.55,
+    "fully_detected_chains_pct": 12.0,
+    "stage_status_counts": {
+      "DETECTED": 260,
+      "PARTIAL": 69,
+      "MISLABELED": 66,
+      "MISSED": 11
+    },
+    "breakpoint_histogram": {
+      "Service disruption": 35,
+      "Backdoor / C2": 26,
+      "Service discovery": 17,
+      "none": 12,
+      "Recon scanning": 7,
+      "Exploitation": 2,
+      "Propagation": 1
+    },
+    "visibility_break_histogram": {
+      "none": 90,
+      "Service disruption": 3,
+      "Exploitation": 2,
+      "Backdoor / C2": 2,
+      "Service discovery": 2,
+      "Recon scanning": 1
+    }
+  }
+}

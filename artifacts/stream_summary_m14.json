@@ -1,0 +1,44 @@
+{
+  "scenario": null,
+  "batch": 2,
+  "event_set_fingerprint": "9754729268f3",
+  "events": 8484,
+  "events_param": 8484,
+  "alerts": 2983,
+  "hidden_chains": [
+    "B2-C143",
+    "B2-C146",
+    "B2-C100",
+    "B2-C141",
+    "B2-C099",
+    "B2-C121"
+  ],
+  "alert_rule": "pattack",
+  "alert_threshold": 0.99,
+  "seed": 14,
+  "decoy_attack_share": 0.35,
+  "chain_attackers": [
+    "175.45.176.0",
+    "175.45.176.2"
+  ],
+  "same_attacker_decoy_share": 0.5,
+  "decoy_alerts_sharing_chain_attacker": 0.4758490566037736,
+  "alerts_by_kind": {
+    "decoy_attack": 2650,
+    "chain": 299,
+    "benign": 34
+  },
+  "events_by_kind": {
+    "benign": 5305,
+    "decoy_attack": 2857,
+    "chain": 322
+  },
+  "benign_false_positive_rate": 0.0064090480678605085,
+  "chain_stage_status": {
+    "DETECTED": 18,
+    "MISLABELED": 6,
+    "PARTIAL": 2
+  },
+  "mean_strict_coverage": 0.6694444444444444,
+  "time_window_hours": 2.715
+}
