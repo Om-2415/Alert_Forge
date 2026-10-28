@@ -27,7 +27,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, recall_score
 import config as C
-from common import build_features, fit_encoders, load_df
+from common import build_features, fit_encoders, load_df, training_frame
 
 # Best parameters found by the original notebook (30 Optuna trials).
 NOTEBOOK_BEST = dict(n_estimators=150, max_depth=20, min_samples_split=20,
@@ -68,13 +68,7 @@ def run_optuna(Xtr, ytr, Xva, yva, n_trials, average):
 
 def main(a):
     flows = load_df(C.ART_DIR / "flows")
-    b1 = flows[flows["batch"] == 1].copy()
-    if a.normal_cap:
-        normal = b1[b1["attack_cat"] == "Normal"]
-        if len(normal) > a.normal_cap:
-            drop = normal.sample(len(normal) - a.normal_cap, random_state=C.SEED).index
-            b1 = b1.drop(index=drop)
-    b1 = b1.sort_values("Stime").reset_index(drop=True)
+    b1 = training_frame(flows, a.normal_cap, C.SEED)
 
     classes = sorted(b1["attack_cat"].astype(str).unique())
     y = b1["attack_cat"].astype(str).map({c: i for i, c in enumerate(classes)}).to_numpy()
@@ -110,7 +104,8 @@ def main(a):
     model = make_rf(params).fit(X, y)
     out = C.ART_DIR / "rf_batch1_frozen.joblib"
     joblib.dump({"model": model, "classes": classes, "encoders": enc, "params": params,
-                 "batch_cutoff_utc": C.BATCH_CUTOFF_UTC, "n_train_rows": int(len(X))}, out)
+                 "batch_cutoff_utc": C.BATCH_CUTOFF_UTC, "n_train_rows": int(len(X)),
+                 "normal_cap": a.normal_cap}, out)
     sha = hashlib.sha256(out.read_bytes()).hexdigest()
     report = {"params": params, "optuna_best_value": best_val, "objective": a.objective,
               "validation_last20pct_of_batch1": val, "model_sha256": sha,

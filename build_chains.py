@@ -16,8 +16,12 @@ Outputs (artifacts/):
                      t_start, t_end, n_flows)
     chain_flows.csv  chain_id, stage_idx, flow_id   (which real flows)
 
+Phase 2 changes: fixed quota PER TEMPLATE (no silent refilling with easy
+templates), variable stage sizes drawn per category, shortfall report.
+
 Usage:
-    python build_chains.py --chains-per-batch 40
+    python build_chains.py                  # CHAIN_QUOTA_PER_TEMPLATE per template per batch
+    python build_chains.py --quota 10
 """
 import argparse
 import numpy as np
@@ -54,8 +58,10 @@ def try_chain(rng, groups, pairs, template, used):
             return None
         if k > 0 and t_arr[i] - cursor > C.CHAIN_MAX_GAP_S:
             return None
+        cap = C.CHAIN_MAX_FLOWS_BY_CAT.get(cat, C.CHAIN_MAX_FLOWS)
+        target = int(rng.integers(C.CHAIN_MIN_FLOWS, cap + 1))      # stage size varies
         start, sel, j = t_arr[i], [], i
-        while j < len(t_arr) and t_arr[j] - start <= C.CHAIN_STAGE_SPAN_S and len(sel) < C.CHAIN_MAX_FLOWS:
+        while j < len(t_arr) and t_arr[j] - start <= C.CHAIN_STAGE_SPAN_S and len(sel) < target:
             if id_arr[j] not in used:
                 sel.append(j)
             j += 1
@@ -66,56 +72,65 @@ def try_chain(rng, groups, pairs, template, used):
     return src, dst, stages
 
 
-def main(n_per_batch: int):
+def main(quota: int):
     rng = np.random.default_rng(C.SEED)
     flows = load_df(C.ART_DIR / "flows")
     att = flows[flows["attack_cat"] != "Normal"][["flow_id", "srcip", "dstip", "attack_cat", "Stime", "batch"]]
     att = att.sort_values("Stime")
 
-    truth_rows, flow_rows, chain_no = [], [], 0
+    truth_rows, flow_rows, chain_no, shortfalls = [], [], 0, []
     for batch in (1, 2):
         groups = build_groups(att[att["batch"] == batch])
         pairs = sorted({(s, d) for (s, d, _) in groups})
-        used, made, attempts = set(), 0, 0
+        used, attempts = set(), 0
         names = list(C.CHAIN_TEMPLATES)
         counts, fails, dead = {t: 0 for t in names}, {t: 0 for t in names}, set()
-        while made < n_per_batch and len(dead) < len(names):
-            live = [t for t in names if t not in dead]
-            tname = min(live, key=lambda t: (counts[t], rng.random()))   # keep templates balanced
-            attempts += 1
-            res = try_chain(rng, groups, pairs, C.CHAIN_TEMPLATES[tname], used)
-            if res is None:
-                fails[tname] += 1
-                if fails[tname] >= 300:      # real flows for this template are used up
-                    dead.add(tname)
-                    print(f"  batch {batch}: template {tname} exhausted after {counts[tname]} chains")
-                continue
-            fails[tname], counts[tname] = 0, counts[tname] + 1
-            src, dst, stages = res
-            chain_no += 1
-            made += 1
-            cid = f"B{batch}-C{chain_no:03d}"
-            for idx, (cat, times, ids, victims) in enumerate(stages, 1):
-                used.update(ids.tolist())
-                sname, tactic = C.STAGE_INFO[cat]
-                truth_rows.append(dict(chain_id=cid, batch=batch, template=tname, stage_idx=idx,
-                                       stage_name=sname, tactic=tactic, unsw_category=cat,
-                                       attacker=src,
-                                       victim=pd.Series(victims).value_counts().index[0],
-                                       n_victims=len(set(victims)), t_start=float(times[0]),
-                                       t_end=float(times[-1]), n_flows=len(ids)))
-                flow_rows += [(cid, idx, int(f)) for f in ids]
-        print(f"batch {batch}: built {made}/{n_per_batch} chains in {attempts} attempts")
+        while any(counts[t] < quota and t not in dead for t in names):
+            for tname in names:
+                if tname in dead or counts[tname] >= quota:
+                    continue
+                attempts += 1
+                res = try_chain(rng, groups, pairs, C.CHAIN_TEMPLATES[tname], used)
+                if res is None:
+                    fails[tname] += 1
+                    if fails[tname] >= 300:          # real flows for this template are used up
+                        dead.add(tname)
+                    continue
+                fails[tname] = 0
+                counts[tname] += 1
+                src, dst, stages = res
+                chain_no += 1
+                cid = f"B{batch}-C{chain_no:03d}"
+                for idx, (cat, times, ids, victims) in enumerate(stages, 1):
+                    used.update(ids.tolist())
+                    sname, tactic = C.STAGE_INFO[cat]
+                    truth_rows.append(dict(chain_id=cid, batch=batch, template=tname, stage_idx=idx,
+                                           stage_name=sname, tactic=tactic, unsw_category=cat,
+                                           attacker=src,
+                                           victim=pd.Series(victims).value_counts().index[0],
+                                           n_victims=len(set(victims)), t_start=float(times[0]),
+                                           t_end=float(times[-1]), n_flows=len(ids)))
+                    flow_rows += [(cid, idx, int(f)) for f in ids]
+        for t in names:
+            if counts[t] < quota:
+                shortfalls.append((batch, t, counts[t], quota))
+        print(f"batch {batch}: " + ", ".join(f"{t.split('_')[0]}={counts[t]}" for t in names)
+              + f"  ({attempts} attempts)")
 
     truth = pd.DataFrame(truth_rows)
     truth.to_csv(C.ART_DIR / "chain_truth.csv", index=False)
     pd.DataFrame(flow_rows, columns=["chain_id", "stage_idx", "flow_id"]).to_csv(
         C.ART_DIR / "chain_flows.csv", index=False)
     print(f"\n{truth['chain_id'].nunique()} chains, {len(truth)} stages, {len(flow_rows):,} real flows")
-    print(truth.groupby(["batch", "template"])["chain_id"].nunique().to_string())
+    print(truth.groupby(["batch", "template"])["chain_id"].nunique().unstack(0).to_string())
+    for batch, t, got, want in shortfalls:
+        print(f"SHORTFALL batch {batch} {t}: built {got}/{want} (real flows exhausted)")
+    print("\nstage-size summary (flows per stage):")
+    print(truth.groupby("unsw_category")["n_flows"].describe()[["count", "min", "50%", "max"]].round(0).to_string())
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--chains-per-batch", type=int, default=40)
-    main(ap.parse_args().chains_per_batch)
+    ap.add_argument("--quota", type=int, default=C.CHAIN_QUOTA_PER_TEMPLATE,
+                    help="target chains per template per batch")
+    main(ap.parse_args().quota)

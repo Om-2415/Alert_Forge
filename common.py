@@ -47,6 +47,20 @@ def parse_port(s: pd.Series) -> pd.Series:
     return out.fillna(0)
 
 
+# ------------------------------------------------------- training frame
+def training_frame(flows: pd.DataFrame, normal_cap=None, seed=42) -> pd.DataFrame:
+    """Batch-1 rows used for training (optionally capping Normal), time-sorted.
+    Shared by train_model.py and blindspot_experiment.py so both train on
+    exactly the same rows."""
+    b1 = flows[flows["batch"] == 1].copy()
+    if normal_cap:
+        normal = b1[b1["attack_cat"] == "Normal"]
+        if len(normal) > normal_cap:
+            drop = normal.sample(len(normal) - normal_cap, random_state=seed).index
+            b1 = b1.drop(index=drop)
+    return b1.sort_values("Stime").reset_index(drop=True)
+
+
 # ------------------------------------------------------------- features
 def feature_columns(df: pd.DataFrame):
     return [c for c in df.columns if c not in NON_FEATURES]

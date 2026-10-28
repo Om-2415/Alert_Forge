@@ -27,22 +27,7 @@ import pandas as pd
 from sklearn.metrics import accuracy_score, f1_score, recall_score
 import config as C
 from common import load_df
-
-LETTER = {"DETECTED": "D", "PARTIAL": "P", "MISLABELED": "L", "MISSED": "M"}
-
-
-def effective_pred(pred_df, classes, rule, thr):
-    """Turn stored probabilities into the final alert label (Normal = no alert)."""
-    if rule == "argmax":
-        return pred_df["pred_class"].astype(str).to_numpy(dtype=object)
-    P = pred_df[[f"p_{c}" for c in classes]].to_numpy()
-    ni = classes.index("Normal")
-    p_attack = 1.0 - P[:, ni]
-    P = P.copy()
-    P[:, ni] = -1.0                                   # best NON-Normal class
-    best = np.array(classes, dtype=object)[P.argmax(1)]
-    return np.where(p_attack >= thr, best, "Normal")
-
+from gap_engine import chain_table, effective_pred, stage_table, summarize
 
 def flow_metrics(true, pred, classes):
     att, nrm = true != "Normal", true == "Normal"
@@ -58,12 +43,6 @@ def flow_metrics(true, pred, classes):
     }
 
 
-def stage_status(frac_correct, frac_alerted):
-    return np.select(
-        [frac_correct >= C.STAGE_DETECTED, frac_correct >= C.STAGE_PARTIAL, frac_alerted >= C.STAGE_ALERTED],
-        ["DETECTED", "PARTIAL", "MISLABELED"], default="MISSED")
-
-
 def main(rule, thr):
     flows = load_df(C.ART_DIR / "flows")[["flow_id", "attack_cat", "batch"]]
     flows["attack_cat"] = flows["attack_cat"].astype(str)
@@ -77,61 +56,20 @@ def main(rule, thr):
           for b, g in df.groupby("batch")}
     (C.ART_DIR / "flow_metrics.json").write_text(json.dumps(fm, indent=2))
 
-    # ---------------- stage-level
+    # ---------------- stage-level + chain-level (shared engine)
     truth = pd.read_csv(C.ART_DIR / "chain_truth.csv")
-    cflows = pd.read_csv(C.ART_DIR / "chain_flows.csv").merge(df[["flow_id", "attack_cat", "eff", "p_max"]], on="flow_id")
-    cflows["correct"] = cflows["eff"] == cflows["attack_cat"]
-    cflows["alerted"] = cflows["eff"] != "Normal"
-    key = ["chain_id", "stage_idx"]
-    agg = cflows.groupby(key).agg(frac_correct=("correct", "mean"), frac_alerted=("alerted", "mean"),
-                                  mean_p_max=("p_max", "mean")).reset_index()
-    top = (cflows.groupby(key)["eff"].agg(lambda s: s.value_counts().index[0])
-           .rename("top_pred").reset_index())
-    stage = truth.merge(agg, on=key).merge(top, on=key)
-    stage["status"] = stage_status(stage["frac_correct"].to_numpy(), stage["frac_alerted"].to_numpy())
+    chain_flows = pd.read_csv(C.ART_DIR / "chain_flows.csv")
+    stage = stage_table(truth, chain_flows, df)
     stage.to_csv(C.ART_DIR / "stage_eval.csv", index=False)
-
-    # ---------------- chain-level
-    rows = []
-    for cid, g in stage.sort_values("stage_idx").groupby("chain_id", sort=False):
-        n = len(g)
-        n_det, n_par = (g.status == "DETECTED").sum(), (g.status == "PARTIAL").sum()
-        strict, vis = n_det / n, (g.frac_alerted >= C.STAGE_ALERTED).mean()
-        nd = g[g.status != "DETECTED"]
-        ms = g[g.status == "MISSED"]
-        rows.append(dict(
-            chain_id=cid, batch=int(g.batch.iloc[0]), template=g.template.iloc[0], n_stages=n,
-            n_detected=int(n_det), n_partial=int(n_par),
-            n_mislabeled=int((g.status == "MISLABELED").sum()), n_missed=int(len(ms)),
-            strict_coverage=strict, weighted_coverage=(n_det + 0.5 * n_par) / n,
-            visibility_coverage=vis, detection_gap_pct=100 * (1 - strict),
-            attribution_gap_pct=100 * (vis - strict),
-            breakpoint_stage=nd.stage_name.iloc[0] if len(nd) else "none",
-            visibility_break_stage=ms.stage_name.iloc[0] if len(ms) else "none",
-            pattern="-".join(LETTER[s] for s in g.status)))
-    chains = pd.DataFrame(rows)
+    chains = chain_table(stage)
     chains.to_csv(C.ART_DIR / "chain_eval.csv", index=False)
-
     by_cat = pd.crosstab([stage.batch, stage.unsw_category], stage.status)
     by_cat.to_csv(C.ART_DIR / "status_by_category.csv")
 
-    # ---------------- summary
-    summary = {"settings": {"alert_rule": rule, "alert_threshold": thr, "stage_detected": C.STAGE_DETECTED,
-                            "stage_partial": C.STAGE_PARTIAL, "stage_alerted": C.STAGE_ALERTED}}
-    for b, g in chains.groupby("batch"):
-        s = stage[stage.batch == b]
-        summary[f"batch{b}"] = {
-            "n_chains": int(len(g)), "n_stages": int(len(s)),
-            "mean_strict_coverage": float(g.strict_coverage.mean()),
-            "mean_weighted_coverage": float(g.weighted_coverage.mean()),
-            "mean_visibility_coverage": float(g.visibility_coverage.mean()),
-            "mean_detection_gap_pct": float(g.detection_gap_pct.mean()),
-            "mean_attribution_gap_pct": float(g.attribution_gap_pct.mean()),
-            "fully_detected_chains_pct": float(100 * (g.n_detected == g.n_stages).mean()),
-            "stage_status_counts": s.status.value_counts().to_dict(),
-            "breakpoint_histogram": g.breakpoint_stage.value_counts().to_dict(),
-            "visibility_break_histogram": g.visibility_break_stage.value_counts().to_dict(),
-        }
+    summary = {"settings": {"alert_rule": rule, "alert_threshold": thr,
+                            "stage_detected": C.STAGE_DETECTED, "stage_partial": C.STAGE_PARTIAL,
+                            "stage_alerted": C.STAGE_ALERTED}}
+    summary.update(summarize(chains, stage))
     (C.ART_DIR / "gap_summary.json").write_text(json.dumps(summary, indent=2))
 
     # ---------------- console report
